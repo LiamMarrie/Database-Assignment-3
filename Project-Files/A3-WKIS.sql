@@ -22,6 +22,7 @@ V_ERROR_MSG VARCHAR2(200);
 
 --cursor to fetch distinct transactions
 CURSOR CUR_TRANSACTION_HISTORY IS
+    --Select distinct 
 
 --why is there a select statment here?
 SELECT
