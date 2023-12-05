@@ -52,7 +52,7 @@ BEGIN
  --loop through distinct transactions
     FOR REC_TRANSACTION IN CUR_TRANSACTION_HISTORY LOOP
  --int vars for curr transactions
-        
+        BEGIN
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
         DEBIT_TOTAL := 0;
         CREDIT_TOTAL := 0;
@@ -150,8 +150,7 @@ BEGIN
                     V_ERROR_MSG
                 );
                 DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
-    
-
+        END;
     END LOOP;
 --I beleive we need to move exceptions up so that it will generate error, but keep working
 EXCEPTION
