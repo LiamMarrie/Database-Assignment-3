@@ -143,6 +143,7 @@ BEGIN
         END IF;
         
     END LOOP;
+--I beleive we need to move exceptions up so that it will generate error, but keep working
 EXCEPTION
     WHEN NO_DATA_FOUND THEN
  --handle missing transactions nums
