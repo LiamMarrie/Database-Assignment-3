@@ -37,6 +37,7 @@ ORDER BY
 --cursor to fetch transaction details for the current transaction
 CURSOR CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO NUMBER) IS
 
+--why does this select exist, it is not saving anything?
 SELECT
     ACCOUNT_NO,
     TRANSACTION_TYPE,
