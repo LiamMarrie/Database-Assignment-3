@@ -156,7 +156,7 @@ EXCEPTION
 
     
     --WHEN OTHERS THEN -- this is very wrong, espicailly when there is a secound one
-    When NO_DATA_FOUND THEN --change to its actual one later
+    When TOO_MANY_ROWS THEN --change to its actual one later
  --handle negative transaction amounts
         V_ERROR_MSG := 'negative transaction amount';
         INSERT INTO WKIS_ERROR_LOG(
