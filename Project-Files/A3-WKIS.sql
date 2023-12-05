@@ -20,6 +20,8 @@ CHANGE_BY NUMBER;
 
 V_ERROR_MSG VARCHAR2(200);
 
+credits_not_equal_debits Exception;
+
 --cursor to fetch distinct transactions
 CURSOR CUR_TRANSACTION_HISTORY IS
 SELECT
@@ -132,7 +134,17 @@ BEGIN
             COMMIT;
         ELSE
  --if debits != credits rollback and log the error
-            ROLLBACK;
+            Raise credits_not_equal_debits;
+            
+        END IF;
+
+        Exception
+
+    END LOOP;
+--I beleive we need to move exceptions up so that it will generate error, but keep working
+EXCEPTION
+    WHEN credits_not_equal_debits THEN
+        ROLLBACK;
             V_ERROR_MSG := 'debit and credit totals do not match for transaction history: '
                            || TO_CHAR(LV_TRANSACTION_NO);
             INSERT INTO WKIS_ERROR_LOG (
@@ -143,11 +155,7 @@ BEGIN
                 V_ERROR_MSG
             );
             DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
-        END IF;
-        
-    END LOOP;
---I beleive we need to move exceptions up so that it will generate error, but keep working
-EXCEPTION
+    
     WHEN NO_DATA_FOUND THEN
  --handle missing transactions nums
         V_ERROR_MSG := 'missing transaction number';
