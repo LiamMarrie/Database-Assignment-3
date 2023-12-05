@@ -53,6 +53,7 @@ BEGIN
         DEBIT_TOTAL := 0;
         CREDIT_TOTAL := 0;
 
+        --Do not move this insert statement below that for loop, or else the program stops working
         INSERT INTO TRANSACTION_HISTORY(
                 TRANSACTION_NO,
                 TRANSACTION_DATE,
@@ -62,6 +63,7 @@ BEGIN
                 REC_TRANSACTION.TRANSACTION_DATE,
                 REC_TRANSACTION.DESCRIPTION
             );
+
  --loop througb transactions details  for curr transaction
         FOR REC_DETAIL IN CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO) LOOP
             IF REC_DETAIL.TRANSACTION_TYPE = 'D' THEN
