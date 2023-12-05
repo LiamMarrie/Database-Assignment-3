@@ -22,6 +22,8 @@ V_ERROR_MSG VARCHAR2(200);
 
 credits_not_equal_debits Exception;
 
+Invalid_transaction_type Exception;
+
 --cursor to fetch distinct transactions
 CURSOR CUR_TRANSACTION_HISTORY IS
 SELECT
@@ -72,17 +74,8 @@ BEGIN
                 CREDIT_TOTAL := CREDIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
             ELSE
  --handle invalid transaction type
-                V_ERROR_MSG := 'invalid transaction type: '
-                               || REC_DETAIL.TRANSACTION_TYPE;
-                INSERT INTO WKIS_ERROR_LOG (
-                    TRANSACTION_NO,
-                    ERROR_MSG
-                ) VALUES (
-                    LV_TRANSACTION_NO,
-                    V_ERROR_MSG
-                );
-                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
-                CONTINUE;
+                Raise Invalid_transaction_type;
+                
             END IF;
  --retrieve the default transaction type for account
             SELECT
@@ -121,12 +114,7 @@ BEGIN
         END LOOP;
  --check debits equal credits before committing
         IF DEBIT_TOTAL = CREDIT_TOTAL THEN
- --insert into transaction history
-            
- --commit transaction
-            --COMMIT; pointless commit if there is 2nd commit right after
- --delete processed transaction
-            --this is good
+--delete the transaction
             DELETE FROM NEW_TRANSACTIONS
             WHERE
                 TRANSACTION_NO = LV_TRANSACTION_NO;
