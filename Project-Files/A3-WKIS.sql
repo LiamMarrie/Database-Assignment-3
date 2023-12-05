@@ -52,6 +52,20 @@ BEGIN
  --loop through distinct transactions
     FOR REC_TRANSACTION IN CUR_TRANSACTION_HISTORY LOOP
  --int vars for curr transactions
+        DECLARE
+
+        
+        --current transaction, attemptint to fix error
+        Cursor CURRENT_EVALUATING_TRANSACTION IS
+            SELECT
+            ACCOUNT_NO,
+            TRANSACTION_TYPE,
+            TRANSACTION_AMOUNT
+            FROM
+            NEW_TRANSACTIONS
+            WHERE
+            TRANSACTION_NO = REC_TRANSACTION.TRANSACTION_NO;
+    
         BEGIN
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
         DEBIT_TOTAL := 0;
@@ -129,7 +143,7 @@ BEGIN
         Exception
             When Invalid_transaction_type THEN
                 V_ERROR_MSG := 'invalid transaction type: '
-                               || REC_DETAIL.TRANSACTION_TYPE;
+                               || CURRENT_EVALUATING_TRANSACTION.TRANSACTION_TYPE;
                 INSERT INTO WKIS_ERROR_LOG (
                     TRANSACTION_NO,
                     ERROR_MSG
