@@ -52,6 +52,16 @@ BEGIN
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
         DEBIT_TOTAL := 0;
         CREDIT_TOTAL := 0;
+
+        INSERT INTO TRANSACTION_HISTORY(
+                TRANSACTION_NO,
+                TRANSACTION_DATE,
+                DESCRIPTION
+            )VALUES(
+                LV_TRANSACTION_NO,
+                REC_TRANSACTION.TRANSACTION_DATE,
+                REC_TRANSACTION.DESCRIPTION
+            );
  --loop througb transactions details  for curr transaction
         FOR REC_DETAIL IN CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO) LOOP
             IF REC_DETAIL.TRANSACTION_TYPE = 'D' THEN
@@ -110,18 +120,11 @@ BEGIN
  --check debits equal credits before committing
         IF DEBIT_TOTAL = CREDIT_TOTAL THEN
  --insert into transaction history
-            INSERT INTO TRANSACTION_HISTORY(
-                TRANSACTION_NO,
-                TRANSACTION_DATE,
-                DESCRIPTION
-            )VALUES(
-                LV_TRANSACTION_NO,
-                REC_TRANSACTION.TRANSACTION_DATE,
-                REC_TRANSACTION.DESCRIPTION
-            );
+            
  --commit transaction
-            COMMIT;
+            --COMMIT; pointless commit if there is 2nd commit right after
  --delete processed transaction
+            --this is good
             DELETE FROM NEW_TRANSACTIONS
             WHERE
                 TRANSACTION_NO = LV_TRANSACTION_NO;
