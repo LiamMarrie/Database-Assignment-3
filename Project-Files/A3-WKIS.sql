@@ -5,7 +5,7 @@
 --server output on
 SET SERVEROUTPUT ON;
 
-DELCARE
+DECLARE
 
 --declare variables
 LV_TRANSACTION_NO NEW_TRANSACTIONS.TRANSACTION_NO%TYPE;
@@ -22,7 +22,6 @@ V_ERROR_MSG VARCHAR2(200);
 
 --cursor to fetch distinct transactions
 CURSOR CUR_TRANSACTION_HISTORY IS
-
 SELECT
     DISTINCT TRANSACTION_NO,
     TRANSACTION_DATE,
@@ -36,7 +35,6 @@ ORDER BY
 
 --cursor to fetch transaction details for the current transaction
 CURSOR CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO NUMBER) IS
-
 SELECT
     ACCOUNT_NO,
     TRANSACTION_TYPE,
@@ -50,15 +48,26 @@ BEGIN
  --loop through distinct transactions
     FOR REC_TRANSACTION IN CUR_TRANSACTION_HISTORY LOOP
  --int vars for curr transactions
+        
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
         DEBIT_TOTAL := 0;
         CREDIT_TOTAL := 0;
+
+        INSERT INTO TRANSACTION_HISTORY(
+                TRANSACTION_NO,
+                TRANSACTION_DATE,
+                DESCRIPTION
+            )VALUES(
+                LV_TRANSACTION_NO,
+                REC_TRANSACTION.TRANSACTION_DATE,
+                REC_TRANSACTION.DESCRIPTION
+            );
  --loop througb transactions details  for curr transaction
         FOR REC_DETAIL IN CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO) LOOP
             IF REC_DETAIL.TRANSACTION_TYPE = 'D' THEN
-                DELETE DEBIT_TOTAL := DEBIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
+                DEBIT_TOTAL := DEBIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
             ELSIF REC_DETAIL.TRANSACTION_TYPE = 'C' THEN
-                CREDIT_TOTAL := CREDIT_TOTAL + REC_DETAILS.TRANSACTION_AMOUNT;
+                CREDIT_TOTAL := CREDIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
             ELSE
  --handle invalid transaction type
                 V_ERROR_MSG := 'invalid transaction type: '
@@ -111,18 +120,11 @@ BEGIN
  --check debits equal credits before committing
         IF DEBIT_TOTAL = CREDIT_TOTAL THEN
  --insert into transaction history
-            INSERT INTO TRANSACTION_HISTORY(
-                TRANSACTION_NO,
-                TRANSACTION_DATE,
-                DESCRIPTION
-            )VALUES(
-                LV_TRANSACTION_NO,
-                REC_TRANSACTION.TRANSACTION_DATE,
-                REC_TRANSACTION.DESCRIPTION
-            );
+            
  --commit transaction
-            COMMIT;
+            --COMMIT; pointless commit if there is 2nd commit right after
  --delete processed transaction
+            --this is good
             DELETE FROM NEW_TRANSACTIONS
             WHERE
                 TRANSACTION_NO = LV_TRANSACTION_NO;
@@ -142,7 +144,9 @@ BEGIN
             );
             DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
         END IF;
+        
     END LOOP;
+--I beleive we need to move exceptions up so that it will generate error, but keep working
 EXCEPTION
     WHEN NO_DATA_FOUND THEN
  --handle missing transactions nums
@@ -153,7 +157,10 @@ EXCEPTION
             V_ERROR_MSG
         );
         DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
-    WHEN OTHERS THEN
+
+    
+    --WHEN OTHERS THEN -- this is very wrong, espicailly when there is a secound one
+    When TOO_MANY_ROWS THEN --change to its actual one later
  --handle negative transaction amounts
         V_ERROR_MSG := 'negative transaction amount';
         INSERT INTO WKIS_ERROR_LOG(
@@ -191,4 +198,4 @@ EXCEPTION
 END;
 /
 
-set serveroutput off;
+--set serveroutput off;
