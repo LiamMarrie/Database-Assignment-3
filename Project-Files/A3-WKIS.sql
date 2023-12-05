@@ -57,7 +57,7 @@ BEGIN
             IF REC_DETAIL.TRANSACTION_TYPE = 'D' THEN
                 DEBIT_TOTAL := DEBIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
             ELSIF REC_DETAIL.TRANSACTION_TYPE = 'C' THEN
-                CREDIT_TOTAL := CREDIT_TOTAL + REC_DETAILS.TRANSACTION_AMOUNT;
+                CREDIT_TOTAL := CREDIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
             ELSE
  --handle invalid transaction type
                 V_ERROR_MSG := 'invalid transaction type: '
