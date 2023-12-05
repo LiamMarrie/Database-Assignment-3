@@ -48,6 +48,7 @@ BEGIN
  --loop through distinct transactions
     FOR REC_TRANSACTION IN CUR_TRANSACTION_HISTORY LOOP
  --int vars for curr transactions
+        
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
         DEBIT_TOTAL := 0;
         CREDIT_TOTAL := 0;
@@ -140,6 +141,7 @@ BEGIN
             );
             DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
         END IF;
+        
     END LOOP;
 EXCEPTION
     WHEN NO_DATA_FOUND THEN
@@ -189,4 +191,4 @@ EXCEPTION
 END;
 /
 
-set serveroutput off;
+--set serveroutput off;
