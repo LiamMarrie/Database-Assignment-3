@@ -20,6 +20,10 @@ CHANGE_BY NUMBER;
 
 V_ERROR_MSG VARCHAR2(200);
 
+credits_not_equal_debits Exception;
+
+Invalid_transaction_type Exception;
+
 --cursor to fetch distinct transactions
 CURSOR CUR_TRANSACTION_HISTORY IS
 SELECT
@@ -32,6 +36,14 @@ WHERE
     TRANSACTION_NO IS NOT NULL
 ORDER BY
     TRANSACTION_NO;
+
+--get the current transaction, to use for error handling
+TYPE TransactionDetailRecord IS RECORD (
+        ACCOUNT_NO         NEW_TRANSACTIONS.ACCOUNT_NO%TYPE,
+        TRANSACTION_TYPE   NEW_TRANSACTIONS.TRANSACTION_TYPE%TYPE,
+        TRANSACTION_AMOUNT NEW_TRANSACTIONS.TRANSACTION_AMOUNT%TYPE
+    );
+CURRENT_REC_DETAIL TransactionDetailRecord;
 
 --cursor to fetch transaction details for the current transaction
 CURSOR CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO NUMBER) IS
@@ -47,42 +59,33 @@ WHERE
 BEGIN
  --loop through distinct transactions
     FOR REC_TRANSACTION IN CUR_TRANSACTION_HISTORY LOOP
- --int vars for curr transactions
-        
+
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
+        
+        BEGIN
         DEBIT_TOTAL := 0;
         CREDIT_TOTAL := 0;
 
-        --Do not move this insert statement below that for loop, or else the program stops working
-        INSERT INTO TRANSACTION_HISTORY(
-                TRANSACTION_NO,
-                TRANSACTION_DATE,
-                DESCRIPTION
-            )VALUES(
+        INSERT INTO TRANSACTION_HISTORY
+            VALUES(
                 LV_TRANSACTION_NO,
                 REC_TRANSACTION.TRANSACTION_DATE,
                 REC_TRANSACTION.DESCRIPTION
             );
-
  --loop througb transactions details  for curr transaction
         FOR REC_DETAIL IN CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO) LOOP
+            CURRENT_REC_DETAIL.ACCOUNT_NO := REC_DETAIL.ACCOUNT_NO;
+            CURRENT_REC_DETAIL.TRANSACTION_TYPE := REC_DETAIL.TRANSACTION_TYPE;
+            CURRENT_REC_DETAIL.TRANSACTION_AMOUNT := REC_DETAIL.TRANSACTION_AMOUNT;
+
             IF REC_DETAIL.TRANSACTION_TYPE = 'D' THEN
                 DEBIT_TOTAL := DEBIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
             ELSIF REC_DETAIL.TRANSACTION_TYPE = 'C' THEN
                 CREDIT_TOTAL := CREDIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
             ELSE
  --handle invalid transaction type
-                V_ERROR_MSG := 'invalid transaction type: '
-                               || REC_DETAIL.TRANSACTION_TYPE;
-                INSERT INTO WKIS_ERROR_LOG (
-                    TRANSACTION_NO,
-                    ERROR_MSG
-                ) VALUES (
-                    LV_TRANSACTION_NO,
-                    V_ERROR_MSG
-                );
-                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
-                CONTINUE;
+                Raise Invalid_transaction_type;
+                
             END IF;
  --retrieve the default transaction type for account
             SELECT
@@ -107,12 +110,8 @@ BEGIN
             WHERE
                 A.ACCOUNT_NO = REC_DETAIL.ACCOUNT_NO;
  --insert transaction details
-            INSERT INTO TRANSACTION_DETAIL (
-                ACCOUNT_NO,
-                TRANSACTION_NO,
-                TRANSACTION_TYPE,
-                TRANSACTION_AMOUNT
-            )VALUES(
+            INSERT INTO TRANSACTION_DETAIL
+                VALUES(
                 REC_DETAIL.ACCOUNT_NO,
                 LV_TRANSACTION_NO,
                 REC_DETAIL.TRANSACTION_TYPE,
@@ -121,12 +120,7 @@ BEGIN
         END LOOP;
  --check debits equal credits before committing
         IF DEBIT_TOTAL = CREDIT_TOTAL THEN
- --insert into transaction history
-            
- --commit transaction
-            --COMMIT; pointless commit if there is 2nd commit right after
- --delete processed transaction
-            --this is good
+--delete the transaction
             DELETE FROM NEW_TRANSACTIONS
             WHERE
                 TRANSACTION_NO = LV_TRANSACTION_NO;
@@ -134,22 +128,37 @@ BEGIN
             COMMIT;
         ELSE
  --if debits != credits rollback and log the error
-            ROLLBACK;
-            V_ERROR_MSG := 'debit and credit totals do not match for transaction history: '
-                           || TO_CHAR(LV_TRANSACTION_NO);
-            INSERT INTO WKIS_ERROR_LOG (
-                TRANSACTION_NO,
-                ERROR_MSG
-            ) VALUES (
-                LV_TRANSACTION_NO,
-                V_ERROR_MSG
-            );
-            DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+            Raise credits_not_equal_debits;
+            
         END IF;
-        
+
+        Exception
+            When Invalid_transaction_type THEN
+                V_ERROR_MSG := 'invalid transaction type: ' || CURRENT_REC_DETAIL.TRANSACTION_TYPE;
+                INSERT INTO WKIS_ERROR_LOG (
+                    TRANSACTION_NO,
+                    ERROR_MSG
+                ) VALUES (
+                    LV_TRANSACTION_NO,
+                    V_ERROR_MSG
+                );
+                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+            WHEN credits_not_equal_debits THEN
+                ROLLBACK;
+                V_ERROR_MSG := 'debit and credit totals do not match for transaction history: ' ;--|| TO_CHAR(LV_TRANSACTION_NO);
+                INSERT INTO WKIS_ERROR_LOG (
+                    TRANSACTION_NO,
+                    ERROR_MSG
+                ) VALUES (
+                    LV_TRANSACTION_NO,
+                    V_ERROR_MSG
+                );
+                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+        END;
     END LOOP;
 --I beleive we need to move exceptions up so that it will generate error, but keep working
 EXCEPTION
+    
     WHEN NO_DATA_FOUND THEN
  --handle missing transactions nums
         V_ERROR_MSG := 'missing transaction number';
