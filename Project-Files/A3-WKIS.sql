@@ -133,18 +133,18 @@ BEGIN
 
         Exception
             When Invalid_transaction_type THEN
-                V_ERROR_MSG := 'invalid transaction type: '
-                               || CURRENT_EVALUATING_TRANSACTION.TRANSACTION_TYPE;
-                INSERT INTO WKIS_ERROR_LOG
-                    VALUES (
+                V_ERROR_MSG := 'invalid transaction type: ' ;--|| CURRENT_EVALUATING_TRANSACTION.TRANSACTION_TYPE;
+                INSERT INTO WKIS_ERROR_LOG (
+                    TRANSACTION_NO,
+                    ERROR_MSG
+                ) VALUES (
                     LV_TRANSACTION_NO,
                     V_ERROR_MSG
                 );
                 DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
             WHEN credits_not_equal_debits THEN
                 ROLLBACK;
-                V_ERROR_MSG := 'debit and credit totals do not match for transaction history: '
-                           || TO_CHAR(LV_TRANSACTION_NO);
+                V_ERROR_MSG := 'debit and credit totals do not match for transaction history: ' ;--|| TO_CHAR(LV_TRANSACTION_NO);
                 INSERT INTO WKIS_ERROR_LOG (
                     TRANSACTION_NO,
                     ERROR_MSG
