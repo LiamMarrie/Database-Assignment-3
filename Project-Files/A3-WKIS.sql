@@ -37,17 +37,14 @@ WHERE
 ORDER BY
     TRANSACTION_NO;
 
---current transaction, attemptint to fix error
-Cursor CURRENT_EVALUATING_TRANSACTION IS
-    SELECT
-            ACCOUNT_NO,
-            TRANSACTION_TYPE,
-            TRANSACTION_AMOUNT
-            FROM
-            NEW_TRANSACTIONS
-            WHERE
-TRANSACTION_NO = LV_TRANSACTION_NO;
-    
+--get the current transaction, to use for error handling
+TYPE TransactionDetailRecord IS RECORD (
+        ACCOUNT_NO         NEW_TRANSACTIONS.ACCOUNT_NO%TYPE,
+        TRANSACTION_TYPE   NEW_TRANSACTIONS.TRANSACTION_TYPE%TYPE,
+        TRANSACTION_AMOUNT NEW_TRANSACTIONS.TRANSACTION_AMOUNT%TYPE
+    );
+CURRENT_REC_DETAIL TransactionDetailRecord;
+
 --cursor to fetch transaction details for the current transaction
 CURSOR CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO NUMBER) IS
 SELECT
@@ -62,7 +59,7 @@ WHERE
 BEGIN
  --loop through distinct transactions
     FOR REC_TRANSACTION IN CUR_TRANSACTION_HISTORY LOOP
- --int vars for curr transactions
+
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
         
         BEGIN
@@ -77,6 +74,10 @@ BEGIN
             );
  --loop througb transactions details  for curr transaction
         FOR REC_DETAIL IN CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO) LOOP
+            CURRENT_REC_DETAIL.ACCOUNT_NO := REC_DETAIL.ACCOUNT_NO;
+            CURRENT_REC_DETAIL.TRANSACTION_TYPE := REC_DETAIL.TRANSACTION_TYPE;
+            CURRENT_REC_DETAIL.TRANSACTION_AMOUNT := REC_DETAIL.TRANSACTION_AMOUNT;
+
             IF REC_DETAIL.TRANSACTION_TYPE = 'D' THEN
                 DEBIT_TOTAL := DEBIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
             ELSIF REC_DETAIL.TRANSACTION_TYPE = 'C' THEN
@@ -133,7 +134,7 @@ BEGIN
 
         Exception
             When Invalid_transaction_type THEN
-                V_ERROR_MSG := 'invalid transaction type: ' ;--|| CURRENT_EVALUATING_TRANSACTION.TRANSACTION_TYPE;
+                V_ERROR_MSG := 'invalid transaction type: ' || CURRENT_REC_DETAIL.TRANSACTION_TYPE;
                 INSERT INTO WKIS_ERROR_LOG (
                     TRANSACTION_NO,
                     ERROR_MSG
