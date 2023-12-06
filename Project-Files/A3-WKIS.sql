@@ -69,11 +69,8 @@ BEGIN
         DEBIT_TOTAL := 0;
         CREDIT_TOTAL := 0;
 
-        INSERT INTO TRANSACTION_HISTORY(
-                TRANSACTION_NO,
-                TRANSACTION_DATE,
-                DESCRIPTION
-            )VALUES(
+        INSERT INTO TRANSACTION_HISTORY
+            VALUES(
                 LV_TRANSACTION_NO,
                 REC_TRANSACTION.TRANSACTION_DATE,
                 REC_TRANSACTION.DESCRIPTION
@@ -112,12 +109,8 @@ BEGIN
             WHERE
                 A.ACCOUNT_NO = REC_DETAIL.ACCOUNT_NO;
  --insert transaction details
-            INSERT INTO TRANSACTION_DETAIL (
-                ACCOUNT_NO,
-                TRANSACTION_NO,
-                TRANSACTION_TYPE,
-                TRANSACTION_AMOUNT
-            )VALUES(
+            INSERT INTO TRANSACTION_DETAIL
+                VALUES(
                 REC_DETAIL.ACCOUNT_NO,
                 LV_TRANSACTION_NO,
                 REC_DETAIL.TRANSACTION_TYPE,
@@ -142,10 +135,8 @@ BEGIN
             When Invalid_transaction_type THEN
                 V_ERROR_MSG := 'invalid transaction type: '
                                || CURRENT_EVALUATING_TRANSACTION.TRANSACTION_TYPE;
-                INSERT INTO WKIS_ERROR_LOG (
-                    TRANSACTION_NO,
-                    ERROR_MSG
-                ) VALUES (
+                INSERT INTO WKIS_ERROR_LOG
+                    VALUES (
                     LV_TRANSACTION_NO,
                     V_ERROR_MSG
                 );
