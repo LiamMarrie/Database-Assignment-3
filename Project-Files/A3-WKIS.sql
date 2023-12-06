@@ -63,8 +63,9 @@ BEGIN
  --loop through distinct transactions
     FOR REC_TRANSACTION IN CUR_TRANSACTION_HISTORY LOOP
  --int vars for curr transactions
-        BEGIN
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
+        
+        BEGIN
         DEBIT_TOTAL := 0;
         CREDIT_TOTAL := 0;
 
