@@ -37,6 +37,17 @@ WHERE
 ORDER BY
     TRANSACTION_NO;
 
+--current transaction, attemptint to fix error
+Cursor CURRENT_EVALUATING_TRANSACTION IS
+    SELECT
+            ACCOUNT_NO,
+            TRANSACTION_TYPE,
+            TRANSACTION_AMOUNT
+            FROM
+            NEW_TRANSACTIONS
+            WHERE
+TRANSACTION_NO = LV_TRANSACTION_NO;
+    
 --cursor to fetch transaction details for the current transaction
 CURSOR CUR_TRANSACTION_DETAILS(LV_TRANSACTION_NO NUMBER) IS
 SELECT
@@ -52,20 +63,6 @@ BEGIN
  --loop through distinct transactions
     FOR REC_TRANSACTION IN CUR_TRANSACTION_HISTORY LOOP
  --int vars for curr transactions
-        DECLARE
-
-        
-        --current transaction, attemptint to fix error
-        Cursor CURRENT_EVALUATING_TRANSACTION IS
-            SELECT
-            ACCOUNT_NO,
-            TRANSACTION_TYPE,
-            TRANSACTION_AMOUNT
-            FROM
-            NEW_TRANSACTIONS
-            WHERE
-            TRANSACTION_NO = REC_TRANSACTION.TRANSACTION_NO;
-    
         BEGIN
         LV_TRANSACTION_NO := REC_TRANSACTION.TRANSACTION_NO;
         DEBIT_TOTAL := 0;
