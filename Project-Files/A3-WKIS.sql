@@ -24,6 +24,8 @@ credits_not_equal_debits Exception;
 
 Invalid_transaction_type Exception;
 
+negative_numbers_exception Exception;
+
 --cursor to fetch distinct transactions
 CURSOR CUR_TRANSACTION_HISTORY IS
 SELECT
@@ -77,6 +79,9 @@ BEGIN
             CURRENT_REC_DETAIL.ACCOUNT_NO := REC_DETAIL.ACCOUNT_NO;
             CURRENT_REC_DETAIL.TRANSACTION_TYPE := REC_DETAIL.TRANSACTION_TYPE;
             CURRENT_REC_DETAIL.TRANSACTION_AMOUNT := REC_DETAIL.TRANSACTION_AMOUNT;
+
+            IF REC_DETAIL.TRANSACTION_AMOUNT < 0 THEN
+                Raise negative_numbers_exception;
 
             IF REC_DETAIL.TRANSACTION_TYPE = 'D' THEN
                 DEBIT_TOTAL := DEBIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
