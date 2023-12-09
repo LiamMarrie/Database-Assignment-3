@@ -26,6 +26,10 @@ Invalid_transaction_type Exception;
 
 negative_numbers_exception Exception;
 
+non_existing_account_exception Exception;
+
+non_existing_account number := 0;
+
 --cursor to fetch distinct transactions
 CURSOR CUR_TRANSACTION_HISTORY IS
 SELECT
@@ -38,6 +42,7 @@ WHERE
     TRANSACTION_NO IS NOT NULL
 ORDER BY
     TRANSACTION_NO;
+
 
 --get the current transaction, to use for error handling
 TYPE TransactionDetailRecord IS RECORD (
@@ -81,7 +86,9 @@ BEGIN
             CURRENT_REC_DETAIL.TRANSACTION_AMOUNT := REC_DETAIL.TRANSACTION_AMOUNT;
 
             IF REC_DETAIL.TRANSACTION_AMOUNT < 0 THEN
+                --handle exception for negative transaction
                 Raise negative_numbers_exception;
+            END IF;
 
             IF REC_DETAIL.TRANSACTION_TYPE = 'D' THEN
                 DEBIT_TOTAL := DEBIT_TOTAL + REC_DETAIL.TRANSACTION_AMOUNT;
@@ -90,8 +97,17 @@ BEGIN
             ELSE
  --handle invalid transaction type
                 Raise Invalid_transaction_type;
-                
             END IF;
+
+            select count(*) into non_existing_account
+            from account
+            where account.account_no = REC_DETAIL.account_no;
+
+            if non_existing_account < 0 then
+                non_existing_account := REC_DETAIL.account_no;
+                Raise non_existing_account_exception;
+            end if;
+
  --retrieve the default transaction type for account
             SELECT
                 AT.DEFAULT_TRANS_TYPE INTO TRANS_TYPE
@@ -138,29 +154,128 @@ BEGIN
         END IF;
 
         Exception
+
+            
+            When non_existing_account_exception THEN
+                ROLLBACK;
+                V_ERROR_MSG := 'the following account does not exist ' || TO_CHAR(non_existing_account);
+                INSERT INTO WKIS_ERROR_LOG (
+                    TRANSACTION_NO,
+                    transaction_date,
+                    description,
+                    ERROR_MSG
+                ) VALUES (
+                    LV_TRANSACTION_NO,
+                    REC_TRANSACTION.transaction_date,
+                    REC_TRANSACTION.description,
+                    V_ERROR_MSG
+                );
+                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+                COMMIT;
+
+            When negative_numbers_exception THEN
+                ROLLBACK;
+                V_ERROR_MSG := 'negative transaction amount: ' || TO_CHAR(LV_TRANSACTION_NO);
+                INSERT INTO WKIS_ERROR_LOG (
+                    TRANSACTION_NO,
+                    transaction_date,
+                    description,
+                    ERROR_MSG
+                ) VALUES (
+                    LV_TRANSACTION_NO,
+                    REC_TRANSACTION.transaction_date,
+                    REC_TRANSACTION.description,
+                    V_ERROR_MSG
+                );
+                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+                COMMIT;
             When Invalid_transaction_type THEN
+                ROLLBACK;
                 V_ERROR_MSG := 'invalid transaction type: ' || CURRENT_REC_DETAIL.TRANSACTION_TYPE;
                 INSERT INTO WKIS_ERROR_LOG (
                     TRANSACTION_NO,
+                    transaction_date,
+                    description,
                     ERROR_MSG
                 ) VALUES (
                     LV_TRANSACTION_NO,
+                    REC_TRANSACTION.transaction_date,
+                    REC_TRANSACTION.description,
                     V_ERROR_MSG
                 );
                 DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+                COMMIT;
             WHEN credits_not_equal_debits THEN
                 ROLLBACK;
-                V_ERROR_MSG := 'debit and credit totals do not match for transaction history: ' ;--|| TO_CHAR(LV_TRANSACTION_NO);
+                V_ERROR_MSG := 'debit and credit totals do not match for transaction history: ' || TO_CHAR(LV_TRANSACTION_NO);
                 INSERT INTO WKIS_ERROR_LOG (
                     TRANSACTION_NO,
+                    transaction_date,
+                    description,
                     ERROR_MSG
                 ) VALUES (
                     LV_TRANSACTION_NO,
+                    REC_TRANSACTION.transaction_date,
+                    REC_TRANSACTION.description,
                     V_ERROR_MSG
                 );
                 DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
-        END;
+                COMMIT;
+            WHEN DUP_VAL_ON_INDEX THEN
+                ROLLBACK;
+            --handle duplicate transaction numbers
+                V_ERROR_MSG := 'duplicate transaction number';
+                INSERT INTO WKIS_ERROR_LOG(
+                    TRANSACTION_NO,
+                    transaction_date,
+                    description,
+                    ERROR_MSG
+                ) VALUES (
+                    LV_TRANSACTION_NO,
+                    REC_TRANSACTION.transaction_date,
+                    REC_TRANSACTION.description,
+                    V_ERROR_MSG
+                );
+                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+                COMMIT;
+            WHEN NO_DATA_FOUND THEN
+                ROLLBACK;
+             --handle missing transactions nums
+                V_ERROR_MSG := 'missing transaction number';
+                INSERT INTO WKIS_ERROR_LOG(
+                    TRANSACTION_NO,
+                    transaction_date,
+                    description,
+                    ERROR_MSG
+                ) VALUES (
+                    null,
+                    REC_TRANSACTION.transaction_date,
+                    REC_TRANSACTION.description,
+                    V_ERROR_MSG
+                );
+                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+                COMMIT;
+            WHEN OTHERS THEN
+                ROLLBACK;
+             --handle all other errors
+                V_ERROR_MSG := 'unknown error: '
+                       || SQLERRM;
+                    INSERT INTO WKIS_ERROR_LOG(
+                    TRANSACTION_NO,
+                    transaction_date,
+                    description,
+                    ERROR_MSG
+                ) VALUES (
+                    LV_TRANSACTION_NO,
+                    REC_TRANSACTION.transaction_date,
+                    REC_TRANSACTION.description,
+                    V_ERROR_MSG
+                );
+                DBMS_OUTPUT.PUT_LINE(V_ERROR_MSG);
+                COMMIT;
+    END;
     END LOOP;
+
 --I beleive we need to move exceptions up so that it will generate error, but keep working
 EXCEPTION
     
@@ -215,3 +330,5 @@ END;
 /
 
 --set serveroutput off;
+--select * from wkis_error_log;
+
